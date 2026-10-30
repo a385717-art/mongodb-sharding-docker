@@ -1,0 +1,43 @@
+>>> mongosh --port 28020 crud/create.js
+---- insertOne ----
+{
+  acknowledged: true,
+  insertedId: ObjectId('6ae3e75fa42dfed3dc0bdb63')
+}
+
+---- insertMany ----
+{
+  acknowledged: true,
+  insertedIds: {
+    '0': ObjectId('6ae3e75fa42dfed3dc0bdb64'),
+    '1': ObjectId('6ae3e75fa42dfed3dc0bdb65'),
+    '2': ObjectId('6ae3e75fa42dfed3dc0bdb66')
+  }
+}
+
+---- empleados de OPERATIONS despues de insertar ----
+{
+  empno: 9001,
+  ename: 'HERRERA',
+  job: 'ANALYST',
+  sal: 2800
+}
+{
+  empno: 9002,
+  ename: 'IBARRA',
+  job: 'ANALYST',
+  sal: 2700
+}
+{
+  empno: 9003,
+  ename: 'LOPEZ',
+  job: 'CLERK',
+  sal: 1200
+}
+{
+  empno: 9004,
+  ename: 'GARCIA',
+  job: 'CLERK',
+  sal: 1150
+}
+total en dbemp.emp: 318

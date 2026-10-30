@@ -1,0 +1,19 @@
+>>> mongosh --port 28020 crud/delete.js
+total antes de borrar: 318
+
+---- deleteOne: empno 9004 ----
+{
+  acknowledged: true,
+  deletedCount: 1
+}
+existe 9004? false
+
+---- deleteMany: dept.dname = "OPERATIONS" ----
+en OPERATIONS antes: 3
+{
+  acknowledged: true,
+  deletedCount: 3
+}
+en OPERATIONS despues: 0
+
+total despues de borrar: 314

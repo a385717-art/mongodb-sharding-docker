@@ -1,0 +1,4 @@
+>>> mongosh --port 28020 scripts/07_insert_emp.js
+acknowledged: true
+documentos insertados: 14
+total en dbemp.emp: 14

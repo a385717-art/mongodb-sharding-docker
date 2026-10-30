@@ -1,0 +1,43 @@
+>>> mongosh --port 28020 scripts/05_add_shards.js
+{
+  shardAdded: 'shard1ReplSet',
+  ok: 1,
+  '$clusterTime': {
+    clusterTime: Timestamp({ t: 1793320795, i: 5 }),
+    signature: {
+      hash: Binary.createFromBase64('AAAAAAAAAAAAAAAAAAAAAAAAAAA=', 0),
+      keyId: Long('0')
+    }
+  },
+  operationTime: Timestamp({ t: 1793320795, i: 5 })
+}
+{
+  shardAdded: 'shard2ReplSet',
+  ok: 1,
+  '$clusterTime': {
+    clusterTime: Timestamp({ t: 1793320795, i: 18 }),
+    signature: {
+      hash: Binary.createFromBase64('AAAAAAAAAAAAAAAAAAAAAAAAAAA=', 0),
+      keyId: Long('0')
+    }
+  },
+  operationTime: Timestamp({ t: 1793320795, i: 8 })
+}
+{
+  shardAdded: 'shard3ReplSet',
+  ok: 1,
+  '$clusterTime': {
+    clusterTime: Timestamp({ t: 1793320795, i: 21 }),
+    signature: {
+      hash: Binary.createFromBase64('AAAAAAAAAAAAAAAAAAAAAAAAAAA=', 0),
+      keyId: Long('0')
+    }
+  },
+  operationTime: Timestamp({ t: 1793320795, i: 21 })
+}
+
+Shards registrados en el cluster:
+ - shard1ReplSet  ->  shard1ReplSet/shard1:27018  (state: 1)
+ - shard2ReplSet  ->  shard2ReplSet/shard2:27019  (state: 1)
+ - shard3ReplSet  ->  shard3ReplSet/shard3:27021  (state: 1)
+Total de shards: 3

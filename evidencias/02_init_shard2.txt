@@ -1,0 +1,6 @@
+>>> mongosh --port 28019 scripts/03_init_shard2.js
+{
+  ok: 1
+}
+esperando a que shard2:27019 sea primario...
+shard2ReplSet listo, el nodo ya es PRIMARY

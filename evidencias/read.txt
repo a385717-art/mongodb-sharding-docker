@@ -1,0 +1,131 @@
+>>> mongosh --port 28020 crud/read.js
+---- 1. find por empno (query dirigida) ----
+{
+  empno: 7788,
+  ename: 'SCOTT',
+  job: 'ANALYST',
+  sal: 3000,
+  dept: {
+    dname: 'RESEARCH'
+  }
+}
+
+---- 2. find por dept.dname = SALES, ordenado por sal desc ----
+{
+  empno: 7698,
+  ename: 'BLAKE',
+  job: 'MANAGER',
+  sal: 2850,
+  comm: null
+}
+{
+  empno: 7499,
+  ename: 'ALLEN',
+  job: 'SALESMAN',
+  sal: 1600,
+  comm: 300
+}
+{
+  empno: 7844,
+  ename: 'TURNER',
+  job: 'SALESMAN',
+  sal: 1500,
+  comm: 0
+}
+{
+  empno: 7521,
+  ename: 'WARD',
+  job: 'SALESMAN',
+  sal: 1250,
+  comm: 500
+}
+{
+  empno: 7654,
+  ename: 'MARTIN',
+  job: 'SALESMAN',
+  sal: 1250,
+  comm: 1400
+}
+{
+  empno: 7900,
+  ename: 'JAMES',
+  job: 'CLERK',
+  sal: 950,
+  comm: null
+}
+
+---- 3. find sal >= 2500 (top 5 por salario) ----
+{
+  empno: 7839,
+  ename: 'KING',
+  sal: 5000,
+  dept: {
+    dname: 'ACCOUNTING'
+  }
+}
+{
+  empno: 8259,
+  ename: 'EMP8259',
+  sal: 3983,
+  dept: {
+    dname: 'RESEARCH'
+  }
+}
+{
+  empno: 8086,
+  ename: 'EMP8086',
+  sal: 3982,
+  dept: {
+    dname: 'SALES'
+  }
+}
+{
+  empno: 8172,
+  ename: 'EMP8172',
+  sal: 3964,
+  dept: {
+    dname: 'RESEARCH'
+  }
+}
+{
+  empno: 8258,
+  ename: 'EMP8258',
+  sal: 3946,
+  dept: {
+    dname: 'ACCOUNTING'
+  }
+}
+
+---- 4. empleados por departamento ----
+{
+  _id: 'ACCOUNTING',
+  empleados: 103
+}
+{
+  _id: 'OPERATIONS',
+  empleados: 4
+}
+{
+  _id: 'RESEARCH',
+  empleados: 105
+}
+{
+  _id: 'SALES',
+  empleados: 106
+}
+
+---- 5. explain() ----
+
+db.emp.find({ empno: 7839 }).explain("executionStats")
+  stage del mongos: SINGLE_SHARD
+  shards consultados: 1
+    - shard3ReplSet | stages: FETCH <- IXSCAN | docs examinados: 1 | devueltos: 1
+  total devueltos: 1
+
+db.emp.find({ "dept.dname": "SALES" }).explain("executionStats")
+  stage del mongos: SHARD_MERGE
+  shards consultados: 3
+    - shard1ReplSet | stages: SHARDING_FILTER <- COLLSCAN | docs examinados: 116 | devueltos: 36
+    - shard2ReplSet | stages: SHARDING_FILTER <- COLLSCAN | docs examinados: 105 | devueltos: 30
+    - shard3ReplSet | stages: SHARDING_FILTER <- COLLSCAN | docs examinados: 97 | devueltos: 40
+  total devueltos: 106

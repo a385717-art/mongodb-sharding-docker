@@ -1,0 +1,3 @@
+>>> mongosh --port 28020 scripts/08_insert_extra.js
+documentos insertados: 300
+total en dbemp.emp: 314

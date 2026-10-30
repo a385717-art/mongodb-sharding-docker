@@ -1,0 +1,6 @@
+>>> mongosh --port 28017 scripts/01_init_configsvr.js
+{
+  ok: 1
+}
+esperando a que configsvr:27017 sea primario...
+configReplSet listo, el nodo ya es PRIMARY

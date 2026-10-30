@@ -1,0 +1,162 @@
+>>> mongosh --port 28020 scripts/09_verificacion.js
+========== sh.status() ==========
+shardingVersion
+{ _id: 1, clusterId: ObjectId('6ae3e752a0a8fc29beba6099') }
+---
+shards
+[
+  {
+    _id: 'shard1ReplSet',
+    host: 'shard1ReplSet/shard1:27018',
+    state: 1,
+    topologyTime: Timestamp({ t: 1793320795, i: 2 })
+  },
+  {
+    _id: 'shard2ReplSet',
+    host: 'shard2ReplSet/shard2:27019',
+    state: 1,
+    topologyTime: Timestamp({ t: 1793320795, i: 6 })
+  },
+  {
+    _id: 'shard3ReplSet',
+    host: 'shard3ReplSet/shard3:27021',
+    state: 1,
+    topologyTime: Timestamp({ t: 1793320795, i: 19 })
+  }
+]
+---
+active mongoses
+[ { '7.0.45': 1 } ]
+---
+autosplit
+{ 'Currently enabled': 'yes' }
+---
+balancer
+{
+  'Currently enabled': 'yes',
+  'Currently running': 'no',
+  'Failed balancer rounds in last 5 attempts': 0,
+  'Migration Results for the last 24 hours': 'No recent migrations'
+}
+---
+shardedDataDistribution
+[
+  {
+    ns: 'dbemp.emp',
+    shards: [
+      {
+        shardName: 'shard2ReplSet',
+        numOrphanedDocs: 0,
+        numOwnedDocuments: 5,
+        ownedSizeBytes: 835,
+        orphanedSizeBytes: 0
+      },
+      {
+        shardName: 'shard3ReplSet',
+        numOrphanedDocs: 0,
+        numOwnedDocuments: 4,
+        ownedSizeBytes: 680,
+        orphanedSizeBytes: 0
+      },
+      {
+        shardName: 'shard1ReplSet',
+        numOrphanedDocs: 0,
+        numOwnedDocuments: 5,
+        ownedSizeBytes: 840,
+        orphanedSizeBytes: 0
+      }
+    ]
+  }
+]
+---
+databases
+[
+  {
+    database: { _id: 'config', primary: 'config', partitioned: true },
+    collections: {}
+  },
+  {
+    database: {
+      _id: 'dbemp',
+      primary: 'shard1ReplSet',
+      partitioned: false,
+      version: {
+        uuid: UUID('6abcc8ba-8666-45f6-a608-7f1c9dd75379'),
+        timestamp: Timestamp({ t: 1793320795, i: 22 }),
+        lastMod: 1
+      }
+    },
+    collections: {
+      'dbemp.emp': {
+        shardKey: { empno: 'hashed' },
+        unique: false,
+        balancing: true,
+        allowMigrations: true,
+        chunkMetadata: [
+          { shard: 'shard1ReplSet', nChunks: 2 },
+          { shard: 'shard2ReplSet', nChunks: 2 },
+          { shard: 'shard3ReplSet', nChunks: 2 }
+        ],
+        chunks: [
+          { min: { empno: MinKey() }, max: { empno: Long('-6148914691236517204') }, 'on shard': 'shard3ReplSet', 'last modified': Timestamp({ t: 1, i: 0 }) },
+          { min: { empno: Long('-6148914691236517204') }, max: { empno: Long('-3074457345618258602') }, 'on shard': 'shard3ReplSet', 'last modified': Timestamp({ t: 1, i: 1 }) },
+          { min: { empno: Long('-3074457345618258602') }, max: { empno: Long('0') }, 'on shard': 'shard1ReplSet', 'last modified': Timestamp({ t: 1, i: 2 }) },
+          { min: { empno: Long('0') }, max: { empno: Long('3074457345618258602') }, 'on shard': 'shard1ReplSet', 'last modified': Timestamp({ t: 1, i: 3 }) },
+          { min: { empno: Long('3074457345618258602') }, max: { empno: Long('6148914691236517204') }, 'on shard': 'shard2ReplSet', 'last modified': Timestamp({ t: 1, i: 4 }) },
+          { min: { empno: Long('6148914691236517204') }, max: { empno: MaxKey() }, 'on shard': 'shard2ReplSet', 'last modified': Timestamp({ t: 1, i: 5 }) }
+        ],
+        tags: []
+      }
+    }
+  }
+]
+
+========== db.emp.getShardDistribution() ==========
+Shard shard2ReplSet at shard2ReplSet/shard2:27019
+{
+  data: '839B',
+  docs: 5,
+  chunks: 2,
+  'estimated data per chunk': '419B',
+  'estimated docs per chunk': 2
+}
+---
+Shard shard1ReplSet at shard1ReplSet/shard1:27018
+{
+  data: '842B',
+  docs: 5,
+  chunks: 2,
+  'estimated data per chunk': '421B',
+  'estimated docs per chunk': 2
+}
+---
+Shard shard3ReplSet at shard3ReplSet/shard3:27021
+{
+  data: '681B',
+  docs: 4,
+  chunks: 2,
+  'estimated data per chunk': '340B',
+  'estimated docs per chunk': 2
+}
+---
+Totals
+{
+  data: '2KiB',
+  docs: 14,
+  chunks: 6,
+  'Shard shard2ReplSet': [
+    '35.52 % data',
+    '35.71 % docs in cluster',
+    '167B avg obj size on shard'
+  ],
+  'Shard shard1ReplSet': [
+    '35.64 % data',
+    '35.71 % docs in cluster',
+    '168B avg obj size on shard'
+  ],
+  'Shard shard3ReplSet': [
+    '28.83 % data',
+    '28.57 % docs in cluster',
+    '170B avg obj size on shard'
+  ]
+}

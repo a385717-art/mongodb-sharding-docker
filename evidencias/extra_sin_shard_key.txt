@@ -1,0 +1,3 @@
+>>> deleteOne y updateOne SIN el shard key (filtro por ename)
+ERROR: A single delete on a sharded collection must contain an exact match on _id (and have the collection default collation) or contain the shard key (and have the simple collation). Delete request: { q: { ename: "NOEXISTE" }, limit: 1 }, shard key pattern: { empno: "hashed" }
+ERROR: A {multi:false} update on a sharded collection must contain an exact match on _id (and have the collection default collation) or target a single shard (and have the simple collation), but this update targeted 3 shards. Update request: { q: { ename: "NOEXISTE" }, u: { $set: { x: 1 } }, multi: false, upsert: false }, shard key pattern: { empno: "hashed" }

@@ -1,0 +1,46 @@
+ Volume mongodb-sharding-docker_configsvr Creating 
+ Volume mongodb-sharding-docker_configsvr Creating 
+ Volume mongodb-sharding-docker_shard1 Creating 
+ Network mongodb-sharding-docker_mongo-cluster Creating 
+ Volume mongodb-sharding-docker_shard2 Creating 
+ Volume mongodb-sharding-docker_shard1 Creating 
+ Volume mongodb-sharding-docker_shard2 Creating 
+ Network mongodb-sharding-docker_mongo-cluster Creating 
+ Volume mongodb-sharding-docker_shard3 Creating 
+ Volume mongodb-sharding-docker_shard3 Creating 
+ Volume mongodb-sharding-docker_configsvr Created 
+ Volume mongodb-sharding-docker_configsvr Created 
+ Volume mongodb-sharding-docker_shard3 Created 
+ Volume mongodb-sharding-docker_shard3 Created 
+ Volume mongodb-sharding-docker_shard1 Created 
+ Volume mongodb-sharding-docker_shard1 Created 
+ Volume mongodb-sharding-docker_shard2 Created 
+ Volume mongodb-sharding-docker_shard2 Created 
+ Network mongodb-sharding-docker_mongo-cluster Created 
+ Network mongodb-sharding-docker_mongo-cluster Created 
+ Container shard3 Creating 
+ Container shard2 Creating 
+ Container shard1 Creating 
+ Container configsvr Creating 
+ Container shard3 Created 
+ Container shard2 Created 
+ Container shard1 Created 
+ Container configsvr Created 
+ Container mongos Creating 
+ Container mongos Created 
+ Container shard3 Starting 
+ Container configsvr Starting 
+ Container shard1 Starting 
+ Container shard2 Starting 
+ Container shard3 Started 
+ Container configsvr Started 
+ Container shard1 Started 
+ Container shard2 Started 
+ Container mongos Starting 
+ Container mongos Started 
+NAME        IMAGE          COMMAND                  SERVICE     CREATED        STATUS                  PORTS
+configsvr   mongo:7.0.45   "docker-entrypoint.s…"   configsvr   1 second ago   Up Less than a second   0.0.0.0:28017->27017/tcp, [::]:28017->27017/tcp
+mongos      mongo:7.0.45   "docker-entrypoint.s…"   mongos      1 second ago   Up Less than a second   27017/tcp, 0.0.0.0:28020->27020/tcp, [::]:28020->27020/tcp
+shard1      mongo:7.0.45   "docker-entrypoint.s…"   shard1      1 second ago   Up Less than a second   27017/tcp, 0.0.0.0:28018->27018/tcp, [::]:28018->27018/tcp
+shard2      mongo:7.0.45   "docker-entrypoint.s…"   shard2      1 second ago   Up Less than a second   27017/tcp, 0.0.0.0:28019->27019/tcp, [::]:28019->27019/tcp
+shard3      mongo:7.0.45   "docker-entrypoint.s…"   shard3      1 second ago   Up Less than a second   27017/tcp, 0.0.0.0:28021->27021/tcp, [::]:28021->27021/tcp

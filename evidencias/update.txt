@@ -1,0 +1,86 @@
+>>> mongosh --port 28020 crud/update.js
+---- updateOne: subir sal de empno 7369 ----
+antes:
+{
+  empno: 7369,
+  ename: 'SMITH',
+  sal: 800,
+  dept: {
+    dname: 'RESEARCH'
+  }
+}
+{
+  acknowledged: true,
+  insertedId: null,
+  matchedCount: 1,
+  modifiedCount: 1,
+  upsertedCount: 0
+}
+despues:
+{
+  empno: 7369,
+  ename: 'SMITH',
+  sal: 1000,
+  dept: {
+    dname: 'RESEARCH'
+  }
+}
+
+---- updateMany: +250 de sal a ACCOUNTING ----
+antes:
+{
+  empno: 7782,
+  ename: 'CLARK',
+  sal: 2450,
+  dept: {
+    dname: 'ACCOUNTING'
+  }
+}
+{
+  empno: 7839,
+  ename: 'KING',
+  sal: 5000,
+  dept: {
+    dname: 'ACCOUNTING'
+  }
+}
+{
+  empno: 7934,
+  ename: 'MILLER',
+  sal: 1300,
+  dept: {
+    dname: 'ACCOUNTING'
+  }
+}
+{
+  acknowledged: true,
+  insertedId: null,
+  matchedCount: 3,
+  modifiedCount: 3,
+  upsertedCount: 0
+}
+despues:
+{
+  empno: 7782,
+  ename: 'CLARK',
+  sal: 2700,
+  dept: {
+    dname: 'ACCOUNTING'
+  }
+}
+{
+  empno: 7839,
+  ename: 'KING',
+  sal: 5250,
+  dept: {
+    dname: 'ACCOUNTING'
+  }
+}
+{
+  empno: 7934,
+  ename: 'MILLER',
+  sal: 1550,
+  dept: {
+    dname: 'ACCOUNTING'
+  }
+}

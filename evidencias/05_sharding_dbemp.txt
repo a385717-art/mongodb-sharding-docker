@@ -1,0 +1,29 @@
+>>> mongosh --port 28020 scripts/06_sharding_dbemp.js
+{
+  ok: 1,
+  '$clusterTime': {
+    clusterTime: Timestamp({ t: 1793320795, i: 30 }),
+    signature: {
+      hash: Binary.createFromBase64('AAAAAAAAAAAAAAAAAAAAAAAAAAA=', 0),
+      keyId: Long('0')
+    }
+  },
+  operationTime: Timestamp({ t: 1793320795, i: 24 })
+}
+
+db.emp.createIndex({ empno: "hashed" })
+empno_hashed
+
+sh.shardCollection("dbemp.emp", { empno: "hashed" })
+{
+  collectionsharded: 'dbemp.emp',
+  ok: 1,
+  '$clusterTime': {
+    clusterTime: Timestamp({ t: 1793320796, i: 51 }),
+    signature: {
+      hash: Binary.createFromBase64('AAAAAAAAAAAAAAAAAAAAAAAAAAA=', 0),
+      keyId: Long('0')
+    }
+  },
+  operationTime: Timestamp({ t: 1793320796, i: 51 })
+}

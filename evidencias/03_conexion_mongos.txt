@@ -1,0 +1,7 @@
+>>> mongosh --port 28020 --eval "db.hello()"
+{
+  msg: 'isdbgrid',
+  isWritablePrimary: true,
+  maxWireVersion: 21
+}
+version: 7.0.45
