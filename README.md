@@ -1,243 +1,188 @@
-#  Cluster MongoDB con Sharding en Docker
+# Cluster MongoDB con Sharding en Docker
 
-Este repositorio documenta paso a paso la configuración de un **cluster de MongoDB con sharding** sobre Docker: config server, dos shards y un router `mongos`, además de la definición de la *shard key* de una colección.
+Práctica de Base de Datos Avanzadas (UACH - FING, LICO).
+Equipo: Ezequiel Herrera y Diego Ibarra.
 
-##  Requisitos
+Montamos un cluster de MongoDB con sharding usando Docker: un config server, tres shards y un router `mongos`. Sobre ese cluster creamos la base `dbemp` con la colección `emp` (empleados), la shardeamos con el shard key `{ empno: "hashed" }` y le hicimos operaciones CRUD.
 
-- [Docker](https://www.docker.com/products/docker-desktop) y Docker Compose
-- `mongosh` (en esta práctica se usa el que viene dentro de los contenedores, vía `docker exec`)
-- Versiones utilizadas: **MongoDB 7.0.45** y **mongosh 2.14.0**
+Versiones: MongoDB 7.0.45 (imagen `mongo:7.0.45`) y mongosh 2.x.
 
----
+## Arquitectura
 
-##  Arquitectura
-
-| Servicio      | Contenedor  | Puerto interno | Puerto en el host | Replica Set       |
-|---------------|-------------|----------------|-------------------|-------------------|
-| Config server | `configsvr` | 27017          | 28017             | `configReplSet`   |
-| Shard 1       | `shard1`    | 27018          | 28018             | `shard1ReplSet`   |
-| Shard 2       | `shard2`    | 27019          | 28019             | `shard2ReplSet`   |
-| Router        | `mongos`    | 27020          | 28020             | —                 |
+| Servicio      | Contenedor  | Puerto host | Puerto interno | Replica set     |
+|---------------|-------------|-------------|----------------|-----------------|
+| Config server | `configsvr` | 28017       | 27017          | `configReplSet` |
+| Shard 1       | `shard1`    | 28018       | 27018          | `shard1ReplSet` |
+| Shard 2       | `shard2`    | 28019       | 27019          | `shard2ReplSet` |
+| Shard 3       | `shard3`    | 28021       | 27021          | `shard3ReplSet` |
+| Router        | `mongos`    | 28020       | 27020          | —               |
 
 ```
-                      ┌──────────────┐
-   Cliente ─────────► │    mongos    │ :27020
-                      └──────┬───────┘
-          ┌──────────────────┼──────────────────┐
-          ▼                  ▼                  ▼
-   ┌─────────────┐     ┌──────────┐       ┌──────────┐
-   │  configsvr  │     │  shard1  │       │  shard2  │
-   │   :27017    │     │  :27018  │       │  :27019  │
-   │ (metadatos) │     └──────────┘       └──────────┘
-   └─────────────┘
+                         ┌──────────┐
+      Cliente ─────────► │  mongos  │ :28020
+                         └────┬─────┘
+       ┌──────────────┬───────┴──────┬──────────────┐
+       ▼              ▼              ▼              ▼
+ ┌───────────┐  ┌──────────┐  ┌──────────┐  ┌──────────┐
+ │ configsvr │  │  shard1  │  │  shard2  │  │  shard3  │
+ │  :28017   │  │  :28018  │  │  :28019  │  │  :28021  │
+ └───────────┘  └──────────┘  └──────────┘  └──────────┘
 ```
 
-- Cada shard y el config server es un **replica set** (de un solo miembro, suficiente para fines didácticos).
-- Las aplicaciones y el shell se conectan **solo a `mongos`**, que consulta los metadatos en el config server y enruta cada operación al shard correspondiente.
+Cada nodo es un replica set de un solo miembro (para la práctica es suficiente). Todo va en la red `mongo-cluster` y cada nodo tiene su propio volumen.
 
----
-
-##  Estructura del repositorio
+## Estructura del repo
 
 ```
 .
-├── README.md                 # Documentación técnica del cluster
-├── docker-compose.yml        # Definición del cluster
-└── Reporte.pdf               # Reporte de la práctica
+├── README.md
+├── docker-compose.yml        # los 5 servicios del cluster
+├── scripts/                  # operaciones de configuracion (en orden)
+│   ├── setup.sh              # corre todo lo de abajo y guarda las salidas
+│   ├── 01_init_configsvr.js  # rs.initiate del config server
+│   ├── 02_init_shard1.js     # rs.initiate de shard1
+│   ├── 03_init_shard2.js     # rs.initiate de shard2
+│   ├── 04_init_shard3.js     # rs.initiate de shard3
+│   ├── 05_add_shards.js      # sh.addShard de los 3 shards
+│   ├── 06_sharding_dbemp.js  # enableSharding, indice hashed y shardCollection
+│   ├── 07_insert_emp.js      # los 14 empleados de EMP/DEPT
+│   ├── 08_insert_extra.js    # 300 empleados generados (empno 8001-8300)
+│   └── 09_verificacion.js    # sh.status() y getShardDistribution()
+├── crud/                     # operaciones CRUD contra mongos
+│   ├── create.js
+│   ├── read.js
+│   ├── update.js
+│   └── delete.js
+└── evidencias/               # salidas reales de cada paso
 ```
 
----
+## Modelo de datos
 
-##  Modelo de datos
-
-Se utiliza la base de datos **`dbemp`** con la colección **`emp`** (empleados). Cada documento incluye el departamento como **subdocumento embebido** (`dept`).
+Base `dbemp`, colección `emp`. Usamos la tabla EMP/DEPT clásica de Oracle, con el departamento embebido en cada empleado:
 
 ```js
 {
-  empno: 7369,
-  ename: "SMITH",
-  job: "CLERK",
-  mgr: 7902,
-  hiredate: ISODate("1980-12-17T00:00:00.000Z"),
-  sal: 800,
-  comm: null,
+  empno: 7369, ename: "SMITH", job: "CLERK", mgr: 7902,
+  hiredate: ISODate("1980-12-17"), sal: 800, comm: null,
   dept: { deptno: 20, dname: "RESEARCH", loc: "DALLAS" }
 }
 ```
 
-| Campo      | Descripción                                   |
-|------------|-----------------------------------------------|
-| `empno`    | Número de empleado (identificador de negocio) |
-| `ename`    | Nombre                                        |
-| `job`      | Puesto                                        |
-| `mgr`      | `empno` del jefe directo                      |
-| `hiredate` | Fecha de contratación                         |
-| `sal`      | Salario                                       |
-| `comm`     | Comisión (puede ser `null`)                   |
-| `dept`     | Subdocumento con `deptno`, `dname` y `loc`    |
+### Shard key: `{ empno: "hashed" }`
 
----
+- `empno` es distinto para cada empleado, así que tiene mucha cardinalidad.
+- Al usar hash, los empleados se reparten parejo entre los 3 shards aunque los `empno` sean seguidos.
+- Si buscas por `empno`, mongos va directo a un solo shard (query dirigida). Si buscas por otro campo (`dept.dname`, `sal`, etc.) o por rango de `empno`, tiene que preguntarle a los 3 shards (scatter-gather).
 
-##  Shard key
+## Cómo levantar el cluster
 
-```js
-{ empno: "hashed" }
-```
+Necesitas Docker con Docker Compose y `mongosh` instalado en tu máquina. Todos los comandos se corren desde la raíz del repo.
 
-**¿Por qué `empno` con hash?**
-
-- `empno` tiene **alta cardinalidad**: cada empleado tiene un valor distinto.
-- Con un índice *hashed* los documentos se distribuyen de forma **uniforme** entre los shards, aunque los valores de `empno` sean consecutivos (evita "hot spots" que se darían con una clave ascendente en rangos).
-- Las consultas por igualdad sobre `empno` se **dirigen a un solo shard** (*targeted query*).
-
-**Contrapartida:** las consultas por rango sobre `empno` (por ejemplo `empno > 7500`) y las que no incluyen la shard key se envían a **todos los shards** (*scatter-gather*).
-
-> Al shardear una colección vacía con clave *hashed*, MongoDB crea chunks iniciales repartidos entre los shards (por defecto 2 por shard), por eso la distribución es pareja desde el inicio aunque la colección sea pequeña.
-
----
-
-##  Operaciones de configuración
-
-### Paso 1: Levantar los contenedores
+### Opción rápida
 
 ```bash
-git clone <URL-DE-ESTE-REPOSITORIO>
-cd <nombre-del-repositorio>
+./scripts/setup.sh
+```
+
+Levanta los contenedores, corre los scripts del 01 al 09 en orden y guarda lo que imprime cada uno en `evidencias/`.
+
+### Paso a paso
+
+**Paso 1. Levantar los contenedores**
+
+```bash
 docker compose up -d
+docker compose ps
 ```
 
-Se crean los volúmenes, la red y los contenedores `configsvr`, `shard1`, `shard2` y `mongos`.
-
-### Paso 2: Inicializar los replica sets
-
-**2.1 Config server**
+**Paso 2. Inicializar los replica sets** (cada uno se conecta directo a su nodo)
 
 ```bash
-docker exec -it configsvr mongosh
+mongosh --port 28017 scripts/01_init_configsvr.js
+mongosh --port 28018 scripts/02_init_shard1.js
+mongosh --port 28019 scripts/03_init_shard2.js
+mongosh --port 28021 scripts/04_init_shard3.js
 ```
 
-```js
-rs.initiate({
-  _id: "configReplSet",
-  configsvr: true,
-  members: [{ _id: 0, host: "configsvr:27017" }]
-})
-```
-
-```js
-exit
-```
-
-**2.2 Shard 1**
+**Paso 3. Conectarse al mongos**
 
 ```bash
-docker exec -it shard1 mongosh --port 27018
+mongosh --port 28020
 ```
 
-```js
-rs.initiate({
-  _id: "shard1ReplSet",
-  members: [{ _id: 0, host: "shard1:27018" }]
-})
-```
+Si al hacer `db.hello()` sale `msg: 'isdbgrid'`, entonces sí estás conectado al router. Si mongos no conecta porque arrancó antes de que el config server estuviera listo, reinícialo con `docker compose restart mongos`.
 
-```js
-exit
-```
-
-**2.3 Shard 2**
+**Paso 4. Agregar los 3 shards**
 
 ```bash
-docker exec -it shard2 mongosh --port 27019
+mongosh --port 28020 scripts/05_add_shards.js
 ```
 
-```js
-rs.initiate({
-  _id: "shard2ReplSet",
-  members: [{ _id: 0, host: "shard2:27019" }]
-})
-```
-
-```js
-exit
-```
-
-### Paso 3: Conectarse al router `mongos`
+**Paso 5. Habilitar sharding y definir el shard key**
 
 ```bash
-docker exec -it mongos mongosh --port 27020
+mongosh --port 28020 scripts/06_sharding_dbemp.js
 ```
 
-> Si `mongos` no logra conectarse, puede haber arrancado antes de que el config server estuviera inicializado. Reiniciarlo con `docker compose restart mongos`.
+Esto hace `sh.enableSharding("dbemp")`, `db.emp.createIndex({ empno: "hashed" })` y `sh.shardCollection("dbemp.emp", { empno: "hashed" })`.
 
-### Paso 4: Agregar los shards al cluster
-
-```js
-sh.addShard("shard1ReplSet/shard1:27018")
-sh.addShard("shard2ReplSet/shard2:27019")
-```
-
-Confirmar con:
-
-```js
-sh.status()
-```
-
-En la salida se verifican los dos shards registrados, el *autosplit* habilitado y el balanceador activo.
-
-### Paso 5: Habilitar sharding en la base de datos y la colección
-
-```js
-sh.enableSharding("dbemp")
-use dbemp
-db.emp.createIndex({ empno: "hashed" })
-sh.shardCollection("dbemp.emp", { empno: "hashed" })
-```
-
-### Paso 6: Insertar datos
-
-```js
-db.emp.insertMany([
-  { empno: 7369, ename: "SMITH",  job: "CLERK",     mgr: 7902, hiredate: ISODate("1980-12-17T00:00:00.000Z"), sal: 800,  comm: null, dept: { deptno: 20, dname: "RESEARCH",   loc: "DALLAS"   } },
-  { empno: 7499, ename: "ALLEN",  job: "SALESMAN",  mgr: 7698, hiredate: ISODate("1981-02-20T00:00:00.000Z"), sal: 1600, comm: 300,  dept: { deptno: 30, dname: "SALES",      loc: "CHICAGO"  } },
-  { empno: 7521, ename: "WARD",   job: "SALESMAN",  mgr: 7698, hiredate: ISODate("1981-02-22T00:00:00.000Z"), sal: 1250, comm: 500,  dept: { deptno: 30, dname: "SALES",      loc: "CHICAGO"  } },
-  { empno: 7566, ename: "JONES",  job: "MANAGER",   mgr: 7839, hiredate: ISODate("1981-04-02T00:00:00.000Z"), sal: 2975, comm: null, dept: { deptno: 20, dname: "RESEARCH",   loc: "DALLAS"   } },
-  { empno: 7654, ename: "MARTIN", job: "SALESMAN",  mgr: 7698, hiredate: ISODate("1981-09-28T00:00:00.000Z"), sal: 1250, comm: 1400, dept: { deptno: 30, dname: "SALES",      loc: "CHICAGO"  } },
-  { empno: 7698, ename: "BLAKE",  job: "MANAGER",   mgr: 7839, hiredate: ISODate("1981-05-01T00:00:00.000Z"), sal: 2850, comm: null, dept: { deptno: 30, dname: "SALES",      loc: "CHICAGO"  } },
-  { empno: 7782, ename: "CLARK",  job: "MANAGER",   mgr: 7839, hiredate: ISODate("1981-06-09T00:00:00.000Z"), sal: 2450, comm: null, dept: { deptno: 10, dname: "ACCOUNTING", loc: "NEW YORK" } },
-  { empno: 7788, ename: "SCOTT",  job: "ANALYST",   mgr: 7566, hiredate: ISODate("1987-04-19T00:00:00.000Z"), sal: 3000, comm: null, dept: { deptno: 20, dname: "RESEARCH",   loc: "DALLAS"   } },
-  { empno: 7839, ename: "KING",   job: "PRESIDENT", mgr: null, hiredate: ISODate("1981-11-17T00:00:00.000Z"), sal: 5000, comm: null, dept: { deptno: 10, dname: "ACCOUNTING", loc: "NEW YORK" } },
-  { empno: 7844, ename: "TURNER", job: "SALESMAN",  mgr: 7698, hiredate: ISODate("1981-09-08T00:00:00.000Z"), sal: 1500, comm: 0,    dept: { deptno: 30, dname: "SALES",      loc: "CHICAGO"  } },
-  { empno: 7876, ename: "ADAMS",  job: "CLERK",     mgr: 7788, hiredate: ISODate("1987-05-23T00:00:00.000Z"), sal: 1100, comm: null, dept: { deptno: 20, dname: "RESEARCH",   loc: "DALLAS"   } },
-  { empno: 7900, ename: "JAMES",  job: "CLERK",     mgr: 7698, hiredate: ISODate("1981-12-03T00:00:00.000Z"), sal: 950,  comm: null, dept: { deptno: 30, dname: "SALES",      loc: "CHICAGO"  } },
-  { empno: 7902, ename: "FORD",   job: "ANALYST",   mgr: 7566, hiredate: ISODate("1981-12-03T00:00:00.000Z"), sal: 3000, comm: null, dept: { deptno: 20, dname: "RESEARCH",   loc: "DALLAS"   } },
-  { empno: 7934, ename: "MILLER", job: "CLERK",     mgr: 7782, hiredate: ISODate("1982-01-23T00:00:00.000Z"), sal: 1300, comm: null, dept: { deptno: 10, dname: "ACCOUNTING", loc: "NEW YORK" } }
-])
-```
-
-### Paso 7: Verificar la distribución entre shards
-
-```js
-db.emp.getShardDistribution()
-```
-
-El resultado muestra, por cada shard, la cantidad de documentos, el tamaño de los datos y el número de chunks, además del porcentaje que representa cada shard sobre el total de los 14 documentos.
-
----
-
-##  Limpieza
+**Paso 6. Insertar los empleados**
 
 ```bash
-docker compose down -v
+mongosh --port 28020 scripts/07_insert_emp.js
+mongosh --port 28020 scripts/08_insert_extra.js   # opcional, para que se vea mejor el reparto
 ```
 
-La opción `-v` elimina también los volúmenes (se pierden los datos del cluster).
+**Paso 7. Verificar**
 
----
+```bash
+mongosh --port 28020 scripts/09_verificacion.js
+```
 
-##  Notas
+Lo que nos salió:
 
-- **Router único de acceso:** el cliente solo habla con `mongos`; este consulta al config server qué chunks tiene cada shard y enruta cada operación.
-- **Shard key hashed:** reparte los documentos de forma pareja entre los shards y permite consultas dirigidas por `empno`, a cambio de que las búsquedas por rango o por otros campos se ejecuten en todos los shards.
-- **Chunks:** MongoDB divide los datos en chunks y el balanceador los redistribuye automáticamente cuando hay desbalance. Con pocos documentos (como en este ejemplo) los chunks no se dividen por tamaño, ya que el tamaño máximo por defecto es de 128 MB en MongoDB 7.0.
-- **Limitaciones de la práctica:** cada replica set tiene un solo miembro (sin tolerancia a fallos real) y el acceso no tiene autenticación habilitada. En producción se usarían al menos 3 miembros por replica set y control de acceso.
+| Shard   | Con 14 docs | Con 314 docs |
+|---------|-------------|--------------|
+| shard1  | 5           | 116          |
+| shard2  | 5           | 103          |
+| shard3  | 4           | 95           |
+
+Cada shard quedó con 2 chunks (6 en total). Al shardear una colección vacía con clave hashed, MongoDB crea esos chunks de una vez y los reparte entre los shards.
+
+> Si no tienes mongosh en tu máquina, puedes usar el de los contenedores, porque `scripts/` y `crud/` están montados. Por ejemplo:
+> `docker exec configsvr mongosh --port 27017 /scripts/01_init_configsvr.js`
+> `docker exec mongos mongosh --port 27020 /crud/read.js`
+
+## Operaciones CRUD
+
+Se corren contra el mongos y en este orden:
+
+```bash
+mongosh --port 28020 crud/create.js   # insertOne + insertMany (empleados 9001-9004 en OPERATIONS)
+mongosh --port 28020 crud/read.js     # find por empno, por dept.dname y por sal, y explain()
+mongosh --port 28020 crud/update.js   # updateOne a empno 7369 y updateMany a ACCOUNTING
+mongosh --port 28020 crud/delete.js   # deleteOne de 9004 y deleteMany de OPERATIONS
+```
+
+Para guardar las salidas como evidencia:
+
+```bash
+for op in create read update delete; do
+  mongosh --port 28020 --quiet crud/$op.js | tee evidencias/$op.txt
+done
+```
+
+`delete.js` borra los empleados que agrega `create.js`, así que el CRUD se puede volver a correr. Lo único que no se regresa es lo de `update.js`, porque cada vez que lo corres vuelve a subir los sueldos.
+
+## Apagar y limpiar
+
+```bash
+docker compose down      # apaga, los datos se quedan en los volumenes
+docker compose down -v   # apaga y borra los volumenes (se pierde todo)
+```
+
+## Notas
+
+- En el compose original el volumen del config server estaba en `/data/db`, pero con `--configsvr` mongo guarda los datos en `/data/configdb`, así que lo cambiamos para que los metadatos sí se queden en el volumen.
+- En MongoDB 7.0, `updateOne` y `deleteOne` sobre una colección shardeada necesitan llevar el shard key (o el `_id`) en el filtro. Por eso los nuestros filtran por `empno`.
+- No hay autenticación y cada replica set tiene un solo miembro, así que no hay tolerancia a fallos. En producción se usarían 3 miembros por replica set y usuarios con contraseña.
